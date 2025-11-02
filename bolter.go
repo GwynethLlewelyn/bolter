@@ -41,14 +41,14 @@ COPYRIGHT:
 	app := cli.NewApp()
 	app.Name = "bolter"
 	app.Usage = "view boltdb file interactively in your terminal"
-	app.Version = "2.0.1"
-	app.Authors = []*cli.Author{
-		&cli.Author{
+	app.Version = "2.0.2"
+	app.Authors = []cli.Author{
+		cli.Author{
 			Name:  "Hasit Mistry",
 			Email: "hasitnm@gmail.com",
 		},
 	}
-	app.Copyright = "(c) 2016 Hasit Mistry"
+	app.Copyright = "(c) 2016–2025 Hasit Mistry"
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{
 			Name:        "file, f",
