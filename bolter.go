@@ -98,6 +98,7 @@ COPYRIGHT:
 }
 
 // Interactively reads commands from os.Stdin.
+// TODO(gwyneth): replace this with https://github.com/chzyer/readline
 func (i *impl) readInput() {
 	i.listBuckets()
 	scanner := bufio.NewScanner(os.Stdin)
@@ -108,7 +109,7 @@ func (i *impl) readInput() {
 		case "\x18": // cancel Ctrl-X
 			return
 		case "\x02": // back Ctrl-B
-			if !strings.Contains(i.loc, "") || !strings.Contains(i.loc, ">>") {
+			if len(i.loc) == 0 || !strings.Contains(i.loc, ">>") {
 				fmt.Fprintf(os.Stdout, "%s\n", goingBack)
 				i.loc = ""
 				i.listBuckets()
