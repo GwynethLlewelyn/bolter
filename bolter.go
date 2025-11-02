@@ -105,9 +105,9 @@ func (i *impl) readInput() {
 		bucket := scanner.Text()
 		fmt.Fprintln(os.Stdout, "")
 		switch bucket {
-		case "\x18":
+		case "\x18": // cancel Ctrl-X
 			return
-		case "\x02":
+		case "\x02": // back Ctrl-B
 			if !strings.Contains(i.loc, "") || !strings.Contains(i.loc, ">>") {
 				fmt.Fprintf(os.Stdout, "%s\n", goingBack)
 				i.loc = ""
