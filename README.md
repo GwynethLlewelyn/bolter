@@ -6,13 +6,13 @@ View BoltDB file in your terminal
 
 ## Install
 
-```
+```bash
 $ go get -u github.com/hasit/bolter
 ```
 
 ## Usage
 
-```
+```bash
 $ bolter [global options]
 
 GLOBAL OPTIONS:
@@ -25,7 +25,7 @@ GLOBAL OPTIONS:
 
 ### List all buckets
 
-```
+```bash
 $ bolter -f emails.db
 +---------------------------+
 |          BUCKETS          |
@@ -39,7 +39,7 @@ $ bolter -f emails.db
 
 ### List all items in bucket
 
-```
+```bash
 $ bolter -f emails.db -b john@doe.com
 Bucket: john@doe.com
 +---------------+---------------------+
@@ -60,7 +60,7 @@ Bucket: john@doe.com
 
 You can easily list all items in a nested bucket:
 
-```
+```bash
 $ bolter -f my.db
 +-----------+
 |  BUCKETS  |
@@ -73,10 +73,10 @@ Bucket: root
 +---------+---------+
 |   KEY   |  VALUE  |
 +---------+---------+
-| nested* |         |
+| nested📁|         |
 +---------+---------+
 
-* means the key ('nested' in this case) is a bucket.
+# 📁 means the key ('nested' in this case) is a bucket.
 
 $ bolter -f my.db -b root.nested
 Bucket: root.nested
@@ -89,7 +89,7 @@ Bucket: root.nested
 
 ### Machine friendly output
 
-```
+```bash
 $ bolter -f emails.db -m
 john@doe.com
 jane@roe.com
