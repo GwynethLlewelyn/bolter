@@ -97,6 +97,7 @@ COPYRIGHT:
 	app.Run(os.Args)
 }
 
+// Interactively reads commands from os.Stdin.
 func (i *impl) readInput() {
 	i.listBuckets()
 	scanner := bufio.NewScanner(os.Stdin)
