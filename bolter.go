@@ -2,15 +2,23 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"log"
+	"net/mail"
 	"os"
+	"path/filepath"
 	"strings"
 
 	kval "github.com/kval-access-language/kval-boltdb"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 )
+
+// A built-in way to change the symbol denoting a sub-bucket.
+// Using a folder emoji instead, for readability purposes.
+// var bucketSymbol = "*" // old way of displaying sub-buckets.
+var bucketSymbol = "📁" // using an emoji to stand out.
 
 // Terminal lines...
 const instructionLine = "> Enter bucket to explore (CTRL-X to quit, CTRL-B to go back, ENTER to go back to ROOT Bucket):"
@@ -21,14 +29,14 @@ func main() {
 	var noValues bool
 	var useMore bool
 
-	cli.AppHelpTemplate = `NAME:
+	cli.CommandHelpTemplate = `NAME:
   {{.Name}} - {{.Usage}}
 
 VERSION:
   {{.Version}}
 
 USAGE:
-  {{.HelpName}} {{if .VisibleFlags}}[global options]{{end}}
+  {{.HelpName}} {{if .VisibleFlags}}[global options]{{end}} [FILE]
 
 GLOBAL OPTIONS:
   {{range .VisibleFlags}}{{.}}
@@ -38,63 +46,89 @@ AUTHOR:
 COPYRIGHT:
   {{.Copyright}}
 `
-	app := cli.NewApp()
-	app.Name = "bolter"
-	app.Usage = "view boltdb file interactively in your terminal"
-	app.Version = "2.0.2"
-	app.Authors = []cli.Author{
-		cli.Author{
-			Name:  "Hasit Mistry",
-			Email: "hasitnm@gmail.com",
+	cmd := &cli.Command{
+		Name:    filepath.Base(os.Args[0]),
+		Usage:   "view boltdb file interactively in your terminal",
+		Version: "2.0.2",
+		Authors: []any{
+			&mail.Address{Name: "Hasit Mistry", Address: "hasitnm@gmail.com"},
 		},
-	}
-	app.Copyright = "(c) 2016–2025 Hasit Mistry"
-	app.Flags = []cli.Flag{
-		&cli.StringFlag{
-			Name:        "file, f",
-			Usage:       "boltdb `FILE` to view",
-			Destination: &file,
+		Copyright:              "(c) 2016–2025 Hasit Mistry",
+		UseShortOptionHandling: true,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "file",
+				Aliases:     []string{"f"},
+				Usage:       "boltdb `FILE` to view (flag may be omitted)",
+				Destination: &file,
+			},
+			&cli.BoolFlag{
+				Name:        "no-values",
+				Usage:       "use if values are huge and/or not printable",
+				Value:       false,
+				Destination: &noValues,
+			},
+			&cli.BoolFlag{
+				Name:        "more",
+				Usage:       "use `more` to print all listings. Should be available in path",
+				Value:       false,
+				Destination: &useMore,
+			},
+			&cli.StringFlag{
+				Name:        "separator",
+				Aliases:     []string{"s", "sep"},
+				Usage:       "`symbol` for marking sub-buckets",
+				Value:       "📁",
+				Destination: &bucketSymbol,
+			},
 		},
-		&cli.BoolFlag{
-			Name:        "no-values",
-			Usage:       "use if values are huge and/or not printable",
-			Destination: &noValues,
-		},
-		&cli.BoolFlag{
-			Name:        "more",
-			Usage:       "use `more` to print all listings. Should be available in path",
-			Destination: &useMore,
-		},
-	}
-	app.Action = func(c *cli.Context) error {
-		if file == "" {
-			cli.ShowAppHelp(c)
-			return nil
-		}
-
-		var formatter formatter = &tableFormatter{
-			noValues: noValues,
-		}
-		if useMore {
-			formatter = &moreWrapFormatter{
-				formatter: formatter,
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if file == "" {
+				// try to use the first non-flag parameter as filename:
+				if !cmd.Args().Present() {
+					cli.ShowRootCommandHelp(cmd)
+					return nil
+				}
+				file = cmd.Args().First()
+				if file == "" {
+					cli.ShowRootCommandHelp(cmd)
+					return nil
+				}
 			}
-		}
 
-		var i impl
-		i = impl{fmt: formatter}
-		if _, err := os.Stat(file); os.IsNotExist(err) {
-			log.Fatal(err)
+			var formatter formatter = &tableFormatter{
+				noValues: noValues,
+			}
+			if useMore {
+				formatter = &moreWrapFormatter{
+					formatter: formatter,
+				}
+			}
+
+			var i impl
+			i = impl{fmt: formatter}
+			if _, err := os.Stat(file); os.IsNotExist(err) {
+				log.Fatal(err)
+				return err
+			}
+			i.initDB(file)
+			defer kval.Disconnect(i.kb)
+
+			i.readInput()
+
+			return nil
+		},
+		CommandNotFound: func(ctx context.Context, cmd *cli.Command, command string) {
+			cli.ShowRootCommandHelp(cmd)
+		},
+		OnUsageError: func(ctx context.Context, cmd *cli.Command, err error, isSubcommand bool) error {
+			cli.ShowRootCommandHelp(cmd)
 			return err
-		}
-		i.initDB(file)
-		defer kval.Disconnect(i.kb)
-
-		i.readInput()
-
-		return nil
+		},
 	}
-	app.Run(os.Args)
+	if err := cmd.Run(context.Background(), os.Args); err != nil {
+		log.Fatal(err)
+	}
 }
 
 // Interactively reads commands from os.Stdin.
@@ -107,6 +141,7 @@ func (i *impl) readInput() {
 		fmt.Fprintln(os.Stdout, "")
 		switch bucket {
 		case "\x18": // cancel Ctrl-X
+			fmt.Fprintln(os.Stdout, "quitting...")
 			return
 		case "\x02": // back Ctrl-B
 			if len(i.loc) == 0 || !strings.Contains(i.loc, ">>") {
@@ -220,7 +255,7 @@ func (i *impl) listBucketItems(bucket string, goBack bool) {
 
 		for k, v := range res.Result {
 			if v == kval.Nestedbucket {
-				k = k + "*"
+				k = k + bucketSymbol
 				v = ""
 			}
 			items = append(items, item{Key: string(k), Value: string(v)})
@@ -244,7 +279,7 @@ func (i *impl) listBuckets() {
 		log.Fatal(err)
 	}
 	for k := range res.Result {
-		buckets = append(buckets, bucket{Name: string(k) + "*"})
+		buckets = append(buckets, bucket{Name: string(k) + bucketSymbol})
 	}
 
 	fmt.Fprint(os.Stdout, "DB Layout:\n\n")
