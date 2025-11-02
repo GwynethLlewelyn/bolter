@@ -12,7 +12,8 @@ type tableFormatter struct {
 
 func (tf tableFormatter) DumpBuckets(w io.Writer, buckets []bucket) {
 	table := tablewriter.NewWriter(w)
-	table.SetHeader([]string{"Buckets"})
+	//	table.SetHeader([]string{"Buckets"})
+	table.Header([]string{"Buckets"})
 	for _, b := range buckets {
 		row := []string{b.Name}
 		table.Append(row)
@@ -22,7 +23,7 @@ func (tf tableFormatter) DumpBuckets(w io.Writer, buckets []bucket) {
 
 func (tf tableFormatter) DumpBucketItems(w io.Writer, bucket string, items []item) {
 	table := tablewriter.NewWriter(w)
-	table.SetHeader([]string{"Key", "Value"})
+	table.Header([]string{"Key", "Value"})
 	for _, item := range items {
 		var row []string
 		if tf.noValues {
